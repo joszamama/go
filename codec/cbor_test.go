@@ -639,6 +639,41 @@ func TestCborDecimalFraction(t *testing.T) {
 	}
 }
 
+func TestCborBigNumPrecision(t *testing.T) {
+	if !testRecoverPanicToErr {
+		t.Skip(testSkipIfNotRecoverPanicToErrMsg)
+	}
+	var h Handle = testCborH
+	defer testSetup(t, &h)()
+	// bignums (tags 2 and 3) decode into an interface{} as a float64 only if it is exact
+	for _, v := range []struct {
+		b []byte
+		f float64
+	}{
+		{[]byte{0xc2, 0x41, 0x01}, 1},                                  // 2(h'01')
+		{[]byte{0xc3, 0x41, 0x01}, -2},                                 // 3(h'01')
+		{[]byte{0xc2, 0x49, 0x01, 0, 0, 0, 0, 0, 0, 0, 0x00}, 1 << 64}, // 2(h'010000000000000000')
+	} {
+		var v1 interface{}
+		NewDecoderBytes(v.b, h).MustDecode(&v1)
+		if f, ok := v1.(float64); !ok || f != v.f {
+			t.Logf("% x: got %v (%T), want %v", v.b, v1, v1, v.f)
+			t.FailNow()
+		}
+	}
+	for _, b := range [][]byte{
+		{0xc2, 0x49, 0x01, 0, 0, 0, 0, 0, 0, 0, 0x01}, // 2(h'010000000000000001') = 2^64+1
+		{0xc3, 0x49, 0x01, 0, 0, 0, 0, 0, 0, 0, 0x00}, // 3(h'010000000000000000') = -2^64-1
+		{0xc2, 0x47, 0x20, 0, 0, 0, 0, 0, 0x01},       // 2(h'20000000000001') = 2^53+1
+	} {
+		var v1 interface{}
+		if err := NewDecoderBytes(b, h).Decode(&v1); err == nil {
+			t.Logf("% x: expected an error, got %v (%T)", b, v1, v1)
+			t.FailNow()
+		}
+	}
+}
+
 func TestCborDesc(t *testing.T) {
 	m := make(map[byte]string)
 	for k, v := range cbordescMajorNames {

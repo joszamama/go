@@ -647,14 +647,18 @@ func (d *cborDecDriver[T]) DecodeExt(rv interface{}, basetype reflect.Type, xtag
 	}
 }
 
-func (d *cborDecDriver[T]) decTagBigIntAsFloat(neg bool) (f float64) {
+func (d *cborDecDriver[T]) decTagBigInt(neg bool) (bi *big.Int) {
 	bs, _ := d.DecodeBytes()
-	bi := new(big.Int).SetBytes(bs)
+	bi = new(big.Int).SetBytes(bs)
 	if neg { // neg big.Int
 		bi0 := bi
 		bi = new(big.Int).Sub(big.NewInt(-1), bi0)
 	}
-	f, _ = bi.Float64()
+	return
+}
+
+func (d *cborDecDriver[T]) decTagBigIntAsFloat(neg bool) (f float64) {
+	f, _ = d.decTagBigInt(neg).Float64()
 	return
 }
 
@@ -726,11 +730,13 @@ func (d *cborDecDriver[T]) DecodeNaked() {
 			case 0, 1:
 				n.v = valueTypeTime
 				n.t = d.decodeTime(n.u)
-			case 2:
-				n.f = d.decTagBigIntAsFloat(false)
-				n.v = valueTypeFloat
-			case 3:
-				n.f = d.decTagBigIntAsFloat(true)
+			case 2, 3:
+				// a bignum is an integer: do not return it as a float64 if that loses precision
+				var acc big.Accuracy
+				n.f, acc = d.decTagBigInt(n.u == 3).Float64()
+				if acc != big.Exact {
+					halt.errorf("decodeNaked: bignum (tag %d) cannot be represented exactly as a float64; use an extension for tag %d", n.u, n.u)
+				}
 				n.v = valueTypeFloat
 			case 4:
 				n.f = d.decTagBigFloatAsFloat(true)

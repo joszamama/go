@@ -241,6 +241,7 @@ func testCborGroup(t *testing.T) {
 	t.Run("TestCborPreferArrayOverSlice", TestCborPreferArrayOverSlice)
 	t.Run("TestCborZeroCopyBytes", TestCborZeroCopyBytes)
 	t.Run("TestCborNumbers", TestCborNumbers)
+	t.Run("TestCborBigNumPrecision", TestCborBigNumPrecision)
 	t.Run("TestCborDesc", TestCborDesc)
 	t.Run("TestCborStructFieldInfoToArray", TestCborStructFieldInfoToArray)
 	t.Run("TestCborAllErrWriter", TestCborAllErrWriter)

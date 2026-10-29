@@ -82,7 +82,8 @@
     "cbor": "w0kBAAAAAAAAAAA=",
     "hex": "c349010000000000000000",
     "roundtrip": true,
-    "decoded": -18446744073709551617
+    "decoded": -18446744073709551617,
+    "skip": true
   },
   {
     "cbor": "IA==",
