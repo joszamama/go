@@ -1651,6 +1651,9 @@ func (d *decoderCborBytes) kInterfaceNaked(f *decFnInfo) (rvn reflect.Value) {
 		rvn = n.rl()
 	case valueTypeTime:
 		rvn = n.rt()
+	case valueTypeCborSimple:
+		v := CborSimpleValue(n.u)
+		rvn = rv4iptr(&v).Elem()
 	default:
 		halt.errorStr2("kInterfaceNaked: unexpected valueType: ", n.v.String())
 	}
@@ -3812,8 +3815,15 @@ func (d *cborDecDriverBytes) DecodeNaked() {
 		case cborBdFloat16, cborBdFloat32, cborBdFloat64:
 			n.v = valueTypeFloat
 			n.f = d.DecodeFloat64()
+		case cborBdExt:
+			n.v = valueTypeCborSimple
+			n.u = uint64(d.cborSimpleValueInNextByte())
 		default:
-			halt.errorf("decodeNaked: Unrecognized d.bd: 0x%x", d.bd)
+			if d.bd >= cborBdFalse {
+				halt.errorf("decodeNaked: Unrecognized d.bd: 0x%x", d.bd)
+			}
+			n.v = valueTypeCborSimple
+			n.u = uint64(d.bd - cborBaseSimple)
 		}
 	default:
 		halt.errorf("decodeNaked: Unrecognized d.bd: 0x%x", d.bd)
@@ -3821,6 +3831,14 @@ func (d *cborDecDriverBytes) DecodeNaked() {
 	if !decodeFurther {
 		d.bdRead = false
 	}
+}
+
+func (d *cborDecDriverBytes) cborSimpleValueInNextByte() (v byte) {
+	v = d.r.readn1()
+	if v < 32 {
+		halt.errorf("invalid simple value in 2 bytes: 0xf8 0x%x", v)
+	}
+	return
 }
 
 func (d *cborDecDriverBytes) uintBytes() (v []byte, ui uint64) {
@@ -3922,6 +3940,8 @@ func (d *cborDecDriverBytes) nextValueBytesBdReadR() {
 	case cborMajorSimpleOrFloat:
 		switch d.bd {
 		case cborBdNil, cborBdUndefined, cborBdFalse, cborBdTrue:
+		case cborBdExt:
+			d.cborSimpleValueInNextByte()
 		case cborBdFloat16:
 			d.r.skip(2)
 		case cborBdFloat32:
@@ -3929,7 +3949,9 @@ func (d *cborDecDriverBytes) nextValueBytesBdReadR() {
 		case cborBdFloat64:
 			d.r.skip(8)
 		default:
-			halt.errorf("nextValueBytes: Unrecognized d.bd: 0x%x", d.bd)
+			if d.bd >= cborBdFalse {
+				halt.errorf("nextValueBytes: Unrecognized d.bd: 0x%x", d.bd)
+			}
 		}
 	default:
 		halt.errorf("nextValueBytes: Unrecognized d.bd: 0x%x", d.bd)
@@ -5643,6 +5665,9 @@ func (d *decoderCborIO) kInterfaceNaked(f *decFnInfo) (rvn reflect.Value) {
 		rvn = n.rl()
 	case valueTypeTime:
 		rvn = n.rt()
+	case valueTypeCborSimple:
+		v := CborSimpleValue(n.u)
+		rvn = rv4iptr(&v).Elem()
 	default:
 		halt.errorStr2("kInterfaceNaked: unexpected valueType: ", n.v.String())
 	}
@@ -7804,8 +7829,15 @@ func (d *cborDecDriverIO) DecodeNaked() {
 		case cborBdFloat16, cborBdFloat32, cborBdFloat64:
 			n.v = valueTypeFloat
 			n.f = d.DecodeFloat64()
+		case cborBdExt:
+			n.v = valueTypeCborSimple
+			n.u = uint64(d.cborSimpleValueInNextByte())
 		default:
-			halt.errorf("decodeNaked: Unrecognized d.bd: 0x%x", d.bd)
+			if d.bd >= cborBdFalse {
+				halt.errorf("decodeNaked: Unrecognized d.bd: 0x%x", d.bd)
+			}
+			n.v = valueTypeCborSimple
+			n.u = uint64(d.bd - cborBaseSimple)
 		}
 	default:
 		halt.errorf("decodeNaked: Unrecognized d.bd: 0x%x", d.bd)
@@ -7813,6 +7845,14 @@ func (d *cborDecDriverIO) DecodeNaked() {
 	if !decodeFurther {
 		d.bdRead = false
 	}
+}
+
+func (d *cborDecDriverIO) cborSimpleValueInNextByte() (v byte) {
+	v = d.r.readn1()
+	if v < 32 {
+		halt.errorf("invalid simple value in 2 bytes: 0xf8 0x%x", v)
+	}
+	return
 }
 
 func (d *cborDecDriverIO) uintBytes() (v []byte, ui uint64) {
@@ -7914,6 +7954,8 @@ func (d *cborDecDriverIO) nextValueBytesBdReadR() {
 	case cborMajorSimpleOrFloat:
 		switch d.bd {
 		case cborBdNil, cborBdUndefined, cborBdFalse, cborBdTrue:
+		case cborBdExt:
+			d.cborSimpleValueInNextByte()
 		case cborBdFloat16:
 			d.r.skip(2)
 		case cborBdFloat32:
@@ -7921,7 +7963,9 @@ func (d *cborDecDriverIO) nextValueBytesBdReadR() {
 		case cborBdFloat64:
 			d.r.skip(8)
 		default:
-			halt.errorf("nextValueBytes: Unrecognized d.bd: 0x%x", d.bd)
+			if d.bd >= cborBdFalse {
+				halt.errorf("nextValueBytes: Unrecognized d.bd: 0x%x", d.bd)
+			}
 		}
 	default:
 		halt.errorf("nextValueBytes: Unrecognized d.bd: 0x%x", d.bd)

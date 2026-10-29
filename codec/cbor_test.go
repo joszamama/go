@@ -639,6 +639,62 @@ func TestCborDecimalFraction(t *testing.T) {
 	}
 }
 
+func TestCborSimpleValues(t *testing.T) {
+	if !testRecoverPanicToErr {
+		t.Skip(testSkipIfNotRecoverPanicToErrMsg)
+	}
+	var h Handle = testCborH
+	defer testSetup(t, &h)()
+	// unassigned simple values (0..19, 32..255) are well-formed and must be decoded
+	for _, v := range []struct {
+		b []byte
+		s CborSimpleValue
+	}{
+		{[]byte{0xe0}, 0},         // simple(0)
+		{[]byte{0xf3}, 19},        // simple(19)
+		{[]byte{0xf8, 0x20}, 32},  // simple(32)
+		{[]byte{0xf8, 0xff}, 255}, // simple(255)
+	} {
+		var v1 interface{}
+		NewDecoderBytes(v.b, h).MustDecode(&v1)
+		if s, ok := v1.(CborSimpleValue); !ok || s != v.s {
+			t.Logf("% x: got %v (%T), want CborSimpleValue %v", v.b, v1, v1, v.s)
+			t.FailNow()
+		}
+	}
+	// they can be captured as Raw, and skipped
+	for _, b := range [][]byte{
+		{0x82, 0xe0, 0x01},       // [simple(0), 1]
+		{0x82, 0xf8, 0x20, 0x01}, // [simple(32), 1]
+	} {
+		var raw Raw
+		NewDecoderBytes(b, h).MustDecode(&raw)
+		if !bytes.Equal(raw, b) {
+			t.Logf("% x: got Raw % x", b, []byte(raw))
+			t.FailNow()
+		}
+	}
+	var s struct{ A int }
+	NewDecoderBytes([]byte{0xa2, 0x61, 'B', 0xf8, 0x20, 0x61, 'A', 0x01}, h).MustDecode(&s) // {"B": simple(32), "A": 1}
+	if s.A != 1 {
+		t.Logf("skipping a simple value: got A=%d, want 1", s.A)
+		t.FailNow()
+	}
+	// 0xf8 followed by a value below 32, and 0xfc..0xfe, are not well-formed
+	for _, b := range [][]byte{{0xf8, 0x18}, {0xf8, 0x14}, {0xfc}, {0x81, 0xf8, 0x1f}} {
+		var v1 interface{}
+		if err := NewDecoderBytes(b, h).Decode(&v1); err == nil {
+			t.Logf("% x: expected an error, got %v (%T)", b, v1, v1)
+			t.FailNow()
+		}
+		var raw Raw
+		if err := NewDecoderBytes(b, h).Decode(&raw); err == nil {
+			t.Logf("% x: expected an error decoding into Raw, got % x", b, []byte(raw))
+			t.FailNow()
+		}
+	}
+}
+
 func TestCborDesc(t *testing.T) {
 	m := make(map[byte]string)
 	for k, v := range cbordescMajorNames {

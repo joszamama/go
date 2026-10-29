@@ -62,6 +62,12 @@ const (
 	cborBaseSimple byte = 0xe0
 )
 
+// CborSimpleValue is a CBOR simple value (major type 7) which has no assigned meaning,
+// i.e. a simple value in the range 0..19 or 32..255.
+//
+// It is returned when such a value is decoded into an interface{}.
+type CborSimpleValue uint8
+
 // const (
 // 	cborSelfDesrTag  byte = 0xd9
 // 	cborSelfDesrTag2 byte = 0xd9

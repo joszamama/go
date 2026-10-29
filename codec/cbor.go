@@ -771,8 +771,15 @@ func (d *cborDecDriver[T]) DecodeNaked() {
 		case cborBdFloat16, cborBdFloat32, cborBdFloat64:
 			n.v = valueTypeFloat
 			n.f = d.DecodeFloat64()
+		case cborBdExt: // simple value in the next byte (32..255)
+			n.v = valueTypeCborSimple
+			n.u = uint64(d.cborSimpleValueInNextByte())
 		default:
-			halt.errorf("decodeNaked: Unrecognized d.bd: 0x%x", d.bd)
+			if d.bd >= cborBdFalse { // 0xe0..0xf3 are simple values 0..19
+				halt.errorf("decodeNaked: Unrecognized d.bd: 0x%x", d.bd)
+			}
+			n.v = valueTypeCborSimple
+			n.u = uint64(d.bd - cborBaseSimple)
 		}
 	default: // should never happen
 		halt.errorf("decodeNaked: Unrecognized d.bd: 0x%x", d.bd)
@@ -780,6 +787,16 @@ func (d *cborDecDriver[T]) DecodeNaked() {
 	if !decodeFurther {
 		d.bdRead = false
 	}
+}
+
+// cborSimpleValueInNextByte reads the simple value which follows 0xf8.
+// Values below 32 must use the one-byte form, and are not well-formed here.
+func (d *cborDecDriver[T]) cborSimpleValueInNextByte() (v byte) {
+	v = d.r.readn1()
+	if v < 32 {
+		halt.errorf("invalid simple value in 2 bytes: 0xf8 0x%x", v)
+	}
+	return
 }
 
 func (d *cborDecDriver[T]) uintBytes() (v []byte, ui uint64) {
@@ -891,6 +908,8 @@ func (d *cborDecDriver[T]) nextValueBytesBdReadR() {
 	case cborMajorSimpleOrFloat:
 		switch d.bd {
 		case cborBdNil, cborBdUndefined, cborBdFalse, cborBdTrue: // pass
+		case cborBdExt:
+			d.cborSimpleValueInNextByte()
 		case cborBdFloat16:
 			d.r.skip(2)
 		case cborBdFloat32:
@@ -898,7 +917,9 @@ func (d *cborDecDriver[T]) nextValueBytesBdReadR() {
 		case cborBdFloat64:
 			d.r.skip(8)
 		default:
-			halt.errorf("nextValueBytes: Unrecognized d.bd: 0x%x", d.bd)
+			if d.bd >= cborBdFalse { // 0xe0..0xf3 are simple values 0..19
+				halt.errorf("nextValueBytes: Unrecognized d.bd: 0x%x", d.bd)
+			}
 		}
 	default: // should never happen
 		halt.errorf("nextValueBytes: Unrecognized d.bd: 0x%x", d.bd)

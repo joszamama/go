@@ -1649,6 +1649,9 @@ func (d *decoderBincBytes) kInterfaceNaked(f *decFnInfo) (rvn reflect.Value) {
 		rvn = n.rl()
 	case valueTypeTime:
 		rvn = n.rt()
+	case valueTypeCborSimple:
+		v := CborSimpleValue(n.u)
+		rvn = rv4iptr(&v).Elem()
 	default:
 		halt.errorStr2("kInterfaceNaked: unexpected valueType: ", n.v.String())
 	}
@@ -5728,6 +5731,9 @@ func (d *decoderBincIO) kInterfaceNaked(f *decFnInfo) (rvn reflect.Value) {
 		rvn = n.rl()
 	case valueTypeTime:
 		rvn = n.rt()
+	case valueTypeCborSimple:
+		v := CborSimpleValue(n.u)
+		rvn = rv4iptr(&v).Elem()
 	default:
 		halt.errorStr2("kInterfaceNaked: unexpected valueType: ", n.v.String())
 	}

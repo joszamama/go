@@ -215,6 +215,7 @@ func testCborGroup(t *testing.T) {
 	t.Run("TestCborHalfFloat", TestCborHalfFloat)
 	t.Run("TestCborSkipTags", TestCborSkipTags)
 	t.Run("TestCborMalformed", TestCborMalformed)
+	t.Run("TestCborSimpleValues", TestCborSimpleValues)
 	t.Run("TestCborCodecsEmbeddedPointer", TestCborCodecsEmbeddedPointer)
 	t.Run("TestCborCodecChan", TestCborCodecChan)
 	t.Run("TestCborStdEncIntf", TestCborStdEncIntf)

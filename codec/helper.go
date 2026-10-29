@@ -564,6 +564,7 @@ const (
 	valueTypeArray
 	valueTypeTime
 	valueTypeExt
+	valueTypeCborSimple
 
 	// valueTypeInvalid = 0xff
 )
@@ -582,6 +583,7 @@ var valueTypeStrings = [...]string{
 	"Array",
 	"Timestamp",
 	"Ext",
+	"CborSimple",
 }
 
 func (x valueType) String() string {
